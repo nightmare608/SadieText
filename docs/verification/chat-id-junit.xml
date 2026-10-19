@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tr.sakin.chat.live.ChatIdTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-18T19:19:33" hostname="c687905dd2fb" time="0.004">
+  <properties/>
+  <testcase name="asciiUidOrderingMatchesRules" classname="tr.sakin.chat.live.ChatIdTest" time="0.002"/>
+  <testcase name="rejectsDelimiterInjection" classname="tr.sakin.chat.live.ChatIdTest" time="0.0"/>
+  <testcase name="rejectsSelfChat" classname="tr.sakin.chat.live.ChatIdTest" time="0.0"/>
+  <testcase name="matchesRulesPairVector" classname="tr.sakin.chat.live.ChatIdTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

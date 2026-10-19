@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tr.sakin.chat.crypto.SignalEngineTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-18T19:19:32" hostname="c687905dd2fb" time="1.046">
+  <properties/>
+  <testcase name="repeatedIncomingMessageIsServedFromAuthenticatedLocalCache" classname="tr.sakin.chat.crypto.SignalEngineTest" time="0.896"/>
+  <testcase name="contextMismatchIsRejectedWithoutLosingOriginalMessage" classname="tr.sakin.chat.crypto.SignalEngineTest" time="0.015"/>
+  <testcase name="outOfOrderDeliveryAndRatchetReplyWork" classname="tr.sakin.chat.crypto.SignalEngineTest" time="0.02"/>
+  <testcase name="cachedMessageCannotCrossChatBoundaries" classname="tr.sakin.chat.crypto.SignalEngineTest" time="0.01"/>
+  <testcase name="failedLocalCommitDoesNotLoseSendAndDoesNotConsumeReceiveState" classname="tr.sakin.chat.crypto.SignalEngineTest" time="0.022"/>
+  <testcase name="identityMustBeExplicitlyVerifiedAndChangeBlocksSending" classname="tr.sakin.chat.crypto.SignalEngineTest" time="0.005"/>
+  <testcase name="weeklyPrekeyRotationPreservesIdentityAndDelayedFirstContact" classname="tr.sakin.chat.crypto.SignalEngineTest" time="0.011"/>
+  <testcase name="modifiedCiphertextIsRejectedAndDoesNotAdvanceSession" classname="tr.sakin.chat.crypto.SignalEngineTest" time="0.026"/>
+  <testcase name="realSignalRoundTripReplyAndRestart" classname="tr.sakin.chat.crypto.SignalEngineTest" time="0.031"/>
+  <testcase name="outboxRetryUsesIdenticalCiphertextAndSurvivesRestart" classname="tr.sakin.chat.crypto.SignalEngineTest" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

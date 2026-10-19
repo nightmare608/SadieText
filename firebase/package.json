@@ -1,0 +1,5 @@
+{
+  "name":"sakin-rules-tests", "version":"0.2.0", "private":true, "type":"module",
+  "scripts": {"test":"node --test tests/*.test.mjs", "emulator:test":"firebase emulators:exec --only firestore --project demo-sakin --config ../firebase.json 'npm test'"},
+  "devDependencies":{"@firebase/rules-unit-testing":"4.0.1", "firebase":"11.10.0", "firebase-tools":"14.9.0"}
+}

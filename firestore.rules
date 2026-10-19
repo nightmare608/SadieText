@@ -1,0 +1,131 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function verified() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function recentLogin() { return request.auth.token.auth_time >= request.time.toMillis() / 1000 - 300; }
+    function active() {
+      return verified() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && !exists(/databases/$(database)/documents/deletedAccounts/$(request.auth.uid));
+    }
+    function validBundle(b) {
+      return b is map && b.keys().hasAll(['identity','registration','signedId','kyberId','signedKey','signedSignature','kyberKey','kyberSignature'])
+        && b.keys().hasOnly(['identity','registration','signedId','kyberId','signedKey','signedSignature','kyberKey','kyberSignature'])
+        && b.signedId is int && b.signedId >= 1 && b.signedId <= 2147483647
+        && b.kyberId is int && b.kyberId >= 1 && b.kyberId <= 2147483647
+        && b.identity is string && b.identity.size() == 44
+        && b.registration is int && b.registration >= 1 && b.registration <= 16380
+        && b.signedKey is string && b.signedKey.size() == 44
+        && b.signedSignature is string && b.signedSignature.size() == 88
+        && b.kyberKey is string && b.kyberKey.size() >= 1000 && b.kyberKey.size() <= 4000
+        && b.kyberSignature is string && b.kyberSignature.size() == 88;
+    }
+    function validProfile(p) {
+      return p.keys().hasAll(['name','username','bundle']) && p.keys().hasOnly(['name','username','bundle'])
+        && p.name is string && p.name.size() >= 1 && p.name.size() <= 40
+        && p.username is string && p.username.matches('^[a-z0-9_]{3,20}$') && validBundle(p.bundle);
+    }
+    match /handles/{handle} {
+      allow get: if verified();
+      allow list: if false;
+      allow create: if verified() && handle.matches('^[a-z0-9_]{3,20}$')
+        && request.resource.data.keys().hasOnly(['uid']) && request.resource.data.uid == request.auth.uid
+        && !exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && !existsAfter(/databases/$(database)/documents/deletedAccounts/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == handle;
+      allow update: if false;
+      allow delete: if verified() && resource.data.uid == request.auth.uid
+        && recentLogin()
+        && !existsAfter(/databases/$(database)/documents/users/$(request.auth.uid))
+        && existsAfter(/databases/$(database)/documents/deletedAccounts/$(request.auth.uid));
+    }
+    match /users/{uid} {
+      // PUBLIC profile only: name, username and public Signal bundle.
+      // Never put email, passwords or private keys in this document.
+      // Reads return the whole document. Fail closed for malformed public
+      // profiles (including accidental private fields written by an admin).
+      // The owner can still read their absent/legacy profile during setup.
+      allow get: if verified() && (request.auth.uid == uid || validProfile(resource.data));
+      allow list: if false;
+      allow create: if verified() && request.auth.uid == uid && validProfile(request.resource.data)
+        && !existsAfter(/databases/$(database)/documents/deletedAccounts/$(uid))
+        && getAfter(/databases/$(database)/documents/handles/$(request.resource.data.username)).data.uid == uid;
+      allow update: if verified() && request.auth.uid == uid && validProfile(request.resource.data)
+        && !existsAfter(/databases/$(database)/documents/deletedAccounts/$(uid))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bundle'])
+        && (request.resource.data.bundle.identity == resource.data.bundle.identity || recentLogin());
+      allow delete: if verified() && request.auth.uid == uid && recentLogin()
+        && !existsAfter(/databases/$(database)/documents/handles/$(resource.data.username))
+        && existsAfter(/databases/$(database)/documents/deletedAccounts/$(uid));
+    }
+    match /deletedAccounts/{uid} {
+      allow get: if verified() && request.auth.uid == uid;
+      allow create: if verified() && request.auth.uid == uid && recentLogin()
+        && !existsAfter(/databases/$(database)/documents/users/$(uid))
+        && request.resource.data.keys().hasAll(['deletedAt']) && request.resource.data.keys().hasOnly(['deletedAt'])
+        && request.resource.data.deletedAt == request.time;
+      allow update, delete, list: if false;
+    }
+    function member(chat) { return active() && request.auth.uid in chat.members; }
+    function chatMember(id) { return member(get(/databases/$(database)/documents/chats/$(id)).data); }
+    // Sorted, delimiter-safe UIDs bind every NEW chat ID to its two members.
+    // Existing legacy IDs retain member-only access; no legacy-ID creates.
+    function pairId(m) {
+      return 'p2:' + m[0] + ':' + m[1];
+    }
+    match /chats/{chatId} {
+      allow get: if member(resource.data);
+      // Missing and foreign documents both deny get. Do not add an absence exception.
+      allow list: if member(resource.data) && request.query.limit != null && request.query.limit <= 50;
+      allow create: if active()
+        && request.resource.data.keys().hasAll(['members','names','updatedAt'])
+        && request.resource.data.keys().hasOnly(['members','names','updatedAt'])
+        && request.resource.data.members is list && request.resource.data.members.size() == 2
+        && request.resource.data.members[0] is string && request.resource.data.members[1] is string
+        && request.resource.data.members[0] != request.resource.data.members[1]
+        && request.resource.data.members[0].matches('^[A-Za-z0-9_-]{1,128}$')
+        && request.resource.data.members[1].matches('^[A-Za-z0-9_-]{1,128}$')
+        && request.resource.data.members[0] < request.resource.data.members[1]
+        && chatId == pairId(request.resource.data.members)
+        && request.auth.uid in request.resource.data.members
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.members[0]))
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.members[1]))
+        && !exists(/databases/$(database)/documents/deletedAccounts/$(request.resource.data.members[0]))
+        && !exists(/databases/$(database)/documents/deletedAccounts/$(request.resource.data.members[1]))
+        && request.resource.data.names is map
+        && request.resource.data.names.keys().hasOnly(request.resource.data.members)
+        && request.resource.data.names.keys().hasAll(request.resource.data.members)
+        && request.resource.data.names[request.resource.data.members[0]] == get(/databases/$(database)/documents/users/$(request.resource.data.members[0])).data.username
+        && request.resource.data.names[request.resource.data.members[1]] == get(/databases/$(database)/documents/users/$(request.resource.data.members[1])).data.username
+        && request.resource.data.updatedAt == request.time;
+      allow update: if member(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updatedAt'])
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+      match /messages/{messageId} {
+        allow get: if chatMember(chatId);
+        allow list: if chatMember(chatId) && request.query.limit != null && request.query.limit <= 100;
+        allow create: if chatMember(chatId)
+          && request.resource.data.keys().hasAll(['sender','recipient','senderIdentity','recipientIdentity','type','ciphertext','createdAt','readAt'])
+          && request.resource.data.keys().hasOnly(['sender','recipient','senderIdentity','recipientIdentity','type','ciphertext','createdAt','readAt'])
+          && request.resource.data.sender == request.auth.uid
+          && request.resource.data.recipient is string && request.resource.data.recipient != request.auth.uid
+          && request.resource.data.recipient in get(/databases/$(database)/documents/chats/$(chatId)).data.members
+          && exists(/databases/$(database)/documents/users/$(request.resource.data.recipient))
+          && !exists(/databases/$(database)/documents/deletedAccounts/$(request.resource.data.recipient))
+          && request.resource.data.senderIdentity == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.bundle.identity
+          && request.resource.data.recipientIdentity == get(/databases/$(database)/documents/users/$(request.resource.data.recipient)).data.bundle.identity
+          && request.resource.data.type is int && request.resource.data.type in [2,3]
+          && request.resource.data.ciphertext is string
+          && request.resource.data.ciphertext.size() >= 16 && request.resource.data.ciphertext.size() <= 20000
+          && request.resource.data.createdAt == request.time && request.resource.data.readAt == null;
+        allow update: if chatMember(chatId) && resource.data.recipient == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt'])
+          && resource.data.readAt == null && request.resource.data.readAt == request.time;
+        allow delete: if chatMember(chatId) && resource.data.sender == request.auth.uid;
+      }
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

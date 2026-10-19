@@ -1,0 +1,12 @@
+Date: 2026-10-19
+Source version: 0.2.3-preview / versionCode 5
+NOT BUILT in this run. Last existing APK: 0.2.2-preview.
+No connected Android device/ADB; actual user Logcat status code NOT captured.
+Likely cause: missing chats members-CONTAINS / updatedAt-DESCENDING composite index, not live-confirmed.
+Rules/index files unchanged.
+Offline deployment-index test: PASS (1 test)
+JavaScript test syntax check: PASS
+New diagnostics tests: 10 Android instrumentation tests, NOT RUN (Android SDK/device unavailable)
+Existing JVM suite: NOT RUN in this run (Gradle/JDK21 unavailable)
+Firestore emulator tests: NOT RUN (emulator JAR download did not complete; process review failed with capacity error)
+Prior 73 Firestore and 14 JVM passing tests describe the previous source version only.

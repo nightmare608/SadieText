@@ -1,0 +1,12 @@
+{
+  "indexes": [
+    {"collectionGroup":"chats","queryScope":"COLLECTION","fields":[
+      {"fieldPath":"members","arrayConfig":"CONTAINS"},
+      {"fieldPath":"updatedAt","order":"DESCENDING"}
+    ]}
+  ],
+  "fieldOverrides": [
+    {"collectionGroup":"messages","fieldPath":"ciphertext","indexes":[]},
+    {"collectionGroup":"users","fieldPath":"bundle","indexes":[]}
+  ]
+}

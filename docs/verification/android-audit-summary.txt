@@ -1,0 +1,7 @@
+SadieText 0.2.2-preview / versionCode 4
+2026-10-18
+Gradle assembleDebug testDebugUnitTest lintDebug: BUILD SUCCESSFUL
+SignalEngineTest: 10 passed
+ChatIdTest: 4 passed
+Lint: 0 errors, 1 pre-existing dependency-version warning
+No physical Android or live Firebase messaging test performed.

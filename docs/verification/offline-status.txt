@@ -1,0 +1,7 @@
+Date: 2026-10-19
+Offline mode source added, not built.
+Offline manifest XML: parsed, checks passed.
+GitHub workflow YAML: parsed, offline/firebase inputs and offline build command checked.
+No new APK generated. Gradle/SDK downloads remain unavailable.
+Demo flow and installed manifest device checks added but NOT RUN.
+Main Firebase app package remains tr.sakin.chat; offline build uses tr.sakin.chat.offline.

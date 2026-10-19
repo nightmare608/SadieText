@@ -1,0 +1,12 @@
+Firestore Emulator Suite — demo-sakin
+Date: 2026-10-18
+Rules compiler: Firestore Emulator (fresh rules load via initializeTestEnvironment)
+Rules hashing usage: none
+Rules SHA-256 fingerprint (artifact checksum only): 5667ac217b9326d9aca3719fe4d975c835eea0f0915fa27d5bb0990482270e87
+Tests: 73
+Passed: 73
+Failed: 0
+Command: cd firebase && npm run emulator:test
+Emulator and test process exit: 0
+Includes new p2 pair IDs, legacy history/outbox compatibility, foreign/absent denial, exact-pair queries and simultaneous opens.
+Scope: local emulator; no cloud deployment or physical device test.
