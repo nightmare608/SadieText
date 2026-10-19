@@ -7,8 +7,8 @@ on:
       mode:
         description: Preview mode
         type: choice
-        options: [offline, firebase]
-        default: offline
+        options: [firebase, offline]
+        default: firebase
 permissions:
   contents: read
 jobs:
@@ -16,6 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Require Firebase configuration
+        if: inputs.mode != 'offline'
+        env:
+          FIREBASE_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          FIREBASE_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: python3 scripts/configure-firebase-ci.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -25,29 +31,21 @@ jobs:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
       - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.0.12077973'
-      - name: Configure Firebase when provided
-        if: inputs.mode == 'firebase'
-        env:
-          FIREBASE_CONFIG: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
-        run: |
-          if [ -n "$FIREBASE_CONFIG" ]; then
-            printf '%s' "$FIREBASE_CONFIG" | base64 --decode > app/google-services.json
-          fi
       - uses: gradle/actions/wrapper-validation@v4
       - uses: gradle/actions/setup-gradle@v4
       - name: Build selected preview
         env:
-          PREVIEW_MODE: ${{ inputs.mode || 'offline' }}
+          PREVIEW_MODE: ${{ inputs.mode || 'firebase' }}
         run: |
           chmod +x gradlew
           if [ "$PREVIEW_MODE" = "offline" ]; then
             ./gradlew -PofflinePreview=true assembleDebug testDebugUnitTest lintDebug assembleDebugAndroidTest
           else
-            ./gradlew assembleDebug testDebugUnitTest lintDebug assembleDebugAndroidTest
+            ./gradlew -PrequireFirebase=true assembleDebug testDebugUnitTest lintDebug assembleDebugAndroidTest
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: sadietext-${{ inputs.mode || 'offline' }}-debug
+          name: sadietext-${{ inputs.mode || 'firebase' }}-debug
           path: app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         if: always()
@@ -75,7 +73,6 @@ jobs:
       - run: npm run emulator:test
         working-directory: firebase
   publish:
-    if: github.event_name == 'push' || inputs.mode == 'offline'
     needs: [debug, rules]
     runs-on: ubuntu-latest
     permissions:
@@ -83,25 +80,39 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: sadietext-offline-debug
+          name: sadietext-${{ inputs.mode || 'firebase' }}-debug
           path: apk
-      - name: Publish installable offline preview
+      - name: Publish APK
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: offline-preview-${{ github.run_number }}
+          PREVIEW_MODE: ${{ inputs.mode || 'firebase' }}
+          RUN_NUMBER: ${{ github.run_number }}
           SOURCE_SHA: ${{ github.sha }}
         run: |
-          cp apk/app-debug.apk SadieText-Cevrimdisi.apk
-          cat > release-notes.md <<EOF
-          Firebase veya hesap gerektirmeyen çevrimdışı arayüz demosu.
-          Gerçek kişilere mesaj göndermez; örnek mesajlar uygulama belleğinde tutulur.
-          Ayrı paket: tr.sakin.chat.offline. Mevcut SadieText hesabını etkilemez.
-          Bu APK debug/test imzası kullanır; üretim dağıtımı değildir.
-          Kaynak kodu ve libsignal kaynak arşivi: https://github.com/${GH_REPO}/tree/${SOURCE_SHA}
+          RELEASE_TAG="${PREVIEW_MODE}-preview-${RUN_NUMBER}"
+          if [ "$PREVIEW_MODE" = "firebase" ]; then
+            APK_NAME=SadieText.apk
+            RELEASE_TITLE="SadieText Firebase Önizleme"
+            cat > release-notes.md <<EOF
+          Firebase Authentication ve Cloud Firestore ile yapılandırılmış Android APK.
+          Paket: tr.sakin.chat. Sunucuda Authentication, kurallar ve indeksler ayrıca etkin olmalıdır.
+          JVM, lint ve Firestore Emulator güvenlik testleri derleme sırasında çalıştırılır.
+          İki gerçek telefonda mesajlaşma ve bağımsız güvenlik denetimi henüz doğrulanmadı.
+          Debug imzası kullanır. Önceki APK ile imzası farklı olabilir; uygulamayı silmek cihaz anahtarlarını ve eski mesajlara erişimi kaybettirebilir.
           EOF
+          else
+            APK_NAME=SadieText-Cevrimdisi.apk
+            RELEASE_TITLE="SadieText Çevrimdışı Önizleme"
+            cat > release-notes.md <<EOF
+          Çevrimdışı arayüz demosu; gerçek kişilere mesaj göndermez.
+          Ayrı paket: tr.sakin.chat.offline. Debug imzası kullanır.
+          EOF
+          fi
+          printf '\nKaynak kodu ve libsignal kaynak arşivi: https://github.com/%s/tree/%s\n' "$GH_REPO" "$SOURCE_SHA" >> release-notes.md
+          cp apk/app-debug.apk "$APK_NAME"
           if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             gh release create "$RELEASE_TAG" --target "$SOURCE_SHA" --prerelease \
-              --title "SadieText Çevrimdışı Önizleme" --notes-file release-notes.md
+              --title "$RELEASE_TITLE" --notes-file release-notes.md
           fi
-          gh release upload "$RELEASE_TAG" SadieText-Cevrimdisi.apk --clobber
+          gh release upload "$RELEASE_TAG" "$APK_NAME" --clobber

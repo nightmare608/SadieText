@@ -1,19 +1,17 @@
 # SadieText — Android özel mesajlaşma
 
-**0.2.3-preview.** Firebase gerektirmeyen çevrimdışı arayüz demosu ve gerçek
-Firebase mesajlaşma sürümünün kaynakları aynı projededir.
+**0.2.3-preview.** Firebase Authentication ve Cloud Firestore ile gerçek bire bir mesajlaşma.
 
 [![Android preview APK](https://github.com/nightmare608/SadieText/actions/workflows/android.yml/badge.svg)](https://github.com/nightmare608/SadieText/actions/workflows/android.yml)
 
-Telefona kurmak için [Releases](https://github.com/nightmare608/SadieText/releases)
-bölümündeki **SadieText-Cevrimdisi.apk** dosyasını indirin. APK yalnız başarılı
-derleme, JVM/lint ve yerel Firestore kural testlerinden sonra otomatik yayımlanır.
-Güncel derleme durumu yukarıdaki Actions bağlantısındadır. Gerçek cihaz testleri
-bu iş akışında çalıştırılmaz.
+Firebase APK başarılı derleme, JVM/lint ve Firestore Emulator testlerinden sonra
+[Releases](https://github.com/nightmare608/SadieText/releases) bölümünde **SadieText.apk**
+adıyla yayımlanır. Firebase ayarı eksikse derleme durur; demo APK yayımlanmaz.
+Önceki `SadieText-Cevrimdisi.apk` gerçek mesajlaşma sürümü değildir.
+Gerçek cihaz testleri bu iş akışında çalıştırılmaz.
 
-Çevrimdışı derleme: `./gradlew -PofflinePreview=true assembleDebug`.
-[Önizleme rehberi](docs/OFFLINE_PREVIEW.md) ·
-[Firebase hata tanılaması](docs/FIRESTORE_DIAGNOSTICS.md).
+[Firebase hata tanılaması](docs/FIRESTORE_DIAGNOSTICS.md) ·
+[GitHub Firebase derlemesi](docs/FIREBASE_APK.md).
 
 Android 8.0+ için Kotlin / Jetpack Compose / Material 3 uygulaması.
 Gerçek Firebase Authentication, Firestore taşıma katmanı ve **libsignal 0.105.1**
@@ -37,7 +35,7 @@ iki “Kabul et” seçeneği bulunur.
 
 **Firebase projesini yalnızca uygulama sahibi oluşturur.** Arkadaşlarınıza aynı
 Firebase projesiyle derlediğiniz APK'yi dağıtırsınız; her kullanıcı Firebase
-projesi oluşturmaz. Son APK, gönderdiğiniz Firebase ayar dosyasıyla yapılandırılmıştır.
+projesi oluşturmaz. Firebase APK bu ayar dosyasıyla yeniden derlenmelidir.
 Kaynak ZIP'e bu dosya eklenmez; yeniden derlerken kendi dosyanızı
 `app/google-services.json` konumuna koyun. Canlı servislerin test sonucu
 [bağlantı raporunda](docs/FIREBASE_CONNECTION.md) bulunur.
@@ -141,14 +139,16 @@ içindedir. Servis hesabı uygulama için gerekmez; APK'ye veya repoya eklemeyin
 
 Release APK: Android Studio **Build → Generate Signed App Bundle / APK → APK**.
 Keystore'u proje dışında oluşturun ve yedekleyin; tüm güncellemeleri aynı anahtarla
-imzalayın. `./gradlew assembleRelease` varsayılan olarak imzasız APK üretir.
+imzalayın. `./gradlew -PrequireFirebase=true assembleRelease` varsayılan olarak imzasız APK üretir.
 GitHub Releases'ta bir **pre-release** açıp kendi imzalı APK'nizi ekleyin.
 Debug APK üretim dağıtımı için uygun imza değildir.
 
-`.github/workflows/android.yml` elle çalıştırılan derleme/test/APK iş akışıdır.
-İsteğe bağlı `GOOGLE_SERVICES_JSON_B64` GitHub Actions secret'ı, yapılandırılmış
-APK üretmek için kullanılır; secret yoksa kurulum/demolu APK üretilir.
-`firebase.yml` kuralları yerel emülatörde test eder. İş akışları otomatik yayın yapmaz.
+`.github/workflows/android.yml` ana dala gönderimde varsayılan olarak Firebase
+APK derler ve testler başarılıysa GitHub Releases'a yayımlar.
+`GOOGLE_SERVICES_JSON` Actions secret'ına yapılandırma dosyasının içeriğini koyun;
+`GOOGLE_SERVICES_JSON_B64` da desteklenir. Dosyayı repoya eklemeyin.
+[Kurulum ve imza sınırlamaları](docs/FIREBASE_APK.md).
+Çevrimdışı demo yalnız elle `mode=offline` seçilirse üretilir.
 
 ## Lisans ve kaynak
 

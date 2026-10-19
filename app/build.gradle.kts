@@ -5,6 +5,10 @@ plugins {
 }
 val offlinePreview = providers.gradleProperty("offlinePreview").map { it.toBooleanStrict() }.getOrElse(false)
 val firebaseConfigured = !offlinePreview && file("google-services.json").exists()
+val requireFirebase = providers.gradleProperty("requireFirebase").map { it.toBooleanStrict() }.getOrElse(false)
+check(!requireFirebase || firebaseConfigured) {
+    "Firebase APK requires app/google-services.json and offlinePreview=false."
+}
 if (firebaseConfigured) apply(plugin = "com.google.gms.google-services")
 android {
     namespace = "tr.sakin.chat"
