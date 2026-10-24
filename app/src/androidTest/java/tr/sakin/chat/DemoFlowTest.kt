@@ -17,7 +17,7 @@ class DemoFlowTest {
             compose.onNodeWithText("Arayüz demosunu aç").performClick()
             compose.onNodeWithText("Demoyu keşfet").performClick()
         }
-        compose.onNodeWithText("Yeni sohbet").performClick()
+        compose.onNodeWithText("Yeni sohbet", useUnmergedTree = true).performClick()
         compose.onNodeWithText("Tam kullanıcı adı").performTextInput("deniz")
         compose.onNodeWithText("Deniz").performClick()
         compose.onNodeWithText("Mesaj yaz…").performTextInput("Merhaba Deniz")
@@ -28,6 +28,16 @@ class DemoFlowTest {
         compose.onNodeWithContentDescription("Geri").performClick()
         compose.onNodeWithText("Sohbetler").assertIsDisplayed()
         compose.onNodeWithText("Deniz").assertIsDisplayed()
+    }
+    @Test fun rightMenuOpensGamesAndReturnsToConversations() {
+        org.junit.Assume.assumeTrue(BuildConfig.OFFLINE_PREVIEW)
+        compose.onAllNodesWithText("Kabul et")[0].performClick()
+        compose.onNodeWithContentDescription("Sağ menü").performClick()
+        compose.onNodeWithText("Oyunlar").performClick()
+        compose.onNodeWithText("Şirketine git").assertIsDisplayed().performClick()
+        compose.onNodeWithContentDescription("Oyunlara dön").assertIsDisplayed().performClick()
+        compose.onNodeWithContentDescription("Geri").performClick()
+        compose.onNodeWithText("Sohbetler").assertIsDisplayed()
     }
     @Test fun offlinePreviewHasNoNetworkPermissionOrFirebaseInitializer() {
         org.junit.Assume.assumeTrue(BuildConfig.OFFLINE_PREVIEW)

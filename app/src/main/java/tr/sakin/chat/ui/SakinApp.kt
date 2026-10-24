@@ -10,6 +10,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import tr.sakin.chat.ui.screens.*
+import tr.sakin.chat.games.phone.*
 
 @Composable fun SakinApp(vm: ChatViewModel, directPreview: Boolean = false) {
     val nav = rememberNavController()
@@ -30,7 +31,9 @@ import tr.sakin.chat.ui.screens.*
                 composable("login") { AuthScreen(false, { nav.popBackStack() }, { nav.navigate("register") }, { nav.navigate("username") }) }
                 composable("register") { AuthScreen(true, { nav.popBackStack() }, { nav.popBackStack() }, { nav.navigate("username") }) }
                 composable("username") { UsernameScreen({ nav.popBackStack() }) { n, u -> vm.profile(n, u); enter() } }
-                composable("chats") { ChatsScreen(name, conversations, { nav.navigate("search") }, { nav.navigate("settings") }, { nav.navigate("chat/$it") }) }
+                composable("chats") { ChatsScreen(name, conversations, { nav.navigate("search") }, { nav.navigate("settings") }, { nav.navigate("chat/$it") }, { nav.navigate("games") }) }
+                composable("games") { GamesScreen({ nav.popBackStack() }, { nav.navigate("phone-company") }) }
+                composable("phone-company") { PhoneCompanyScreen("offline-demo", { nav.popBackStack() }) }
                 composable("search") { SearchScreen({ nav.popBackStack() }, vm::find) {
                     vm.open(it); nav.navigate("chat/${it.id}") { popUpTo("search") { inclusive = true } }
                 } }

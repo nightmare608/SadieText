@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package tr.sakin.chat.ui.screens
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -103,9 +105,9 @@ import tr.sakin.chat.domain.*
         }
     }
 }
-@Composable fun ChatsScreen(name: String, chats: List<Conversation>, search: () -> Unit, settings: () -> Unit, open: (String) -> Unit) {
+@Composable fun ChatsScreen(name: String, chats: List<Conversation>, search: () -> Unit, settings: () -> Unit, open: (String) -> Unit, games: () -> Unit = {}) {
     Scaffold(topBar = { Header("Sohbetler", actions = {
-        IconButton(onClick = settings) { Icon(Icons.Outlined.Settings, "Ayarlar") }
+        RightMenu(settings, games)
     }) }, floatingActionButton = {
         ExtendedFloatingActionButton(onClick = search, icon = { Icon(Icons.Outlined.Edit, null) }, text = { Text("Yeni sohbet") })
     }) { padding ->
@@ -121,7 +123,7 @@ import tr.sakin.chat.domain.*
                     ListItem(headlineContent = { Text(chat.person.name, fontWeight = FontWeight.SemiBold) },
                         supportingContent = { Text(chat.messages.lastOrNull()?.text ?: "Bir merhaba yaz · demo", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
                         leadingContent = { Avatar(chat.person.name) }, trailingContent = { Text(chat.messages.lastOrNull()?.time.orEmpty(), style = MaterialTheme.typography.labelSmall) },
-                        modifier = Modifier.clickable { open(chat.person.id) })
+                        modifier = Modifier.animateItem().clickable { open(chat.person.id) })
                 }
             }
         }
@@ -146,7 +148,8 @@ import tr.sakin.chat.domain.*
     var text by rememberSaveable(chat?.person?.id) { mutableStateOf("") }
     var deleting by remember { mutableStateOf<String?>(null) }
     val list = rememberLazyListState()
-    LaunchedEffect(chat?.messages?.size) { if (!chat?.messages.isNullOrEmpty()) list.scrollToItem(chat!!.messages.lastIndex) }
+    val bottom = rememberSmoothMessageScroll(list, chat?.messages?.lastOrNull()?.id, chat?.messages?.size ?: 0, chat?.messages?.lastOrNull()?.mine == true)
+    val scrollScope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().imePadding()) {
         Header(chat?.person?.name ?: "Sohbet bulunamadı", back)
         Text("Yerel demo · Mesajlar karşı tarafa ulaşmaz", Modifier.padding(horizontal = 20.dp, vertical = 8.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -154,18 +157,19 @@ import tr.sakin.chat.domain.*
         if (chat.messages.isEmpty()) Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { Text("İlk mesajını yaz.") }
         else LazyColumn(state = list, modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(chat.messages, key = { it.id }) { message ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = if (message.mine) Arrangement.End else Arrangement.Start) {
-                    Surface(shape = RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp), color = MaterialTheme.colorScheme.primaryContainer,
+                Row(Modifier.fillMaxWidth().animateItem(), horizontalArrangement = if (message.mine) Arrangement.End else Arrangement.Start) {
+                    Surface(shape = if(message.mine) RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp) else RoundedCornerShape(20.dp, 20.dp, 20.dp, 4.dp), color = if(message.mine) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.widthIn(max = 300.dp).clickable { deleting = message.id }) {
                         Column(Modifier.padding(14.dp)) {
-                            Text(message.text, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(message.text)
                             Text("${message.time} · Yerel taslak", Modifier.align(Alignment.End).padding(top = 6.dp), style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if(!bottom) TextButton(onClick = { scrollScope.launch { list.animateScrollToItem(chat.messages.lastIndex) } }, modifier = Modifier.align(Alignment.End)) { Text("Son mesaja git ↓") }
+        Row(Modifier.fillMaxWidth().animateContentSize().padding(12.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(text, { text = it.take(2000) }, placeholder = { Text("Mesaj yaz…") }, modifier = Modifier.weight(1f), maxLines = 5, shape = RoundedCornerShape(24.dp))
             FilledIconButton(onClick = { val outgoing = text; text = ""; send(outgoing) }, enabled = text.isNotBlank()) {
                 Icon(Icons.AutoMirrored.Filled.Send, "Demo mesaj ekle")

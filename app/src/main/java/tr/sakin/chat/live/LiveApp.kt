@@ -2,6 +2,11 @@
 package tr.sakin.chat.live
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.shape.RoundedCornerShape
+import tr.sakin.chat.games.phone.*
+import tr.sakin.chat.ui.screens.RightMenu
+import tr.sakin.chat.ui.screens.rememberSmoothMessageScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -57,15 +62,24 @@ import kotlinx.coroutines.launch
 }
 @Composable fun LiveApp(vm: LiveViewModel, theme: ThemeMode, setTheme: (ThemeMode) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
+    var gameRoute by rememberSaveable(state.me?.uid) { mutableStateOf<String?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(state.page, state.chatId, state.listenerRevision, lifecycle) {
+    LaunchedEffect(state.page, state.chatId, state.listenerRevision, lifecycle, gameRoute) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            when (state.page) {
+            if(gameRoute == null) when (state.page) {
                 LivePage.HOME -> vm.observeHome()
                 LivePage.CHAT -> vm.observeChat()
                 else -> Unit
             }
         }
+    }
+    if(gameRoute != null) {
+        BackHandler { gameRoute = if(gameRoute == "phone") "games" else null }
+        Box(Modifier.fillMaxSize().safeDrawingPadding()) {
+            if(gameRoute == "phone") PhoneCompanyScreen(state.me?.uid ?: "signed-out", { gameRoute = "games" })
+            else GamesScreen({ gameRoute = null }, { gameRoute = "phone" })
+        }
+        return
     }
     BackHandler(state.page in listOf(LivePage.CHAT, LivePage.SEARCH, LivePage.SETTINGS)) { vm.go(LivePage.HOME) }
     Surface(Modifier.fillMaxSize()) {
@@ -102,7 +116,7 @@ import kotlinx.coroutines.launch
                         TextButton(onClick = vm::signOut, enabled = !state.busy) { Text("Çıkış yap") }
                     }
                     LivePage.DELETE_PENDING -> CompleteDeletion(vm, state.busy)
-                    LivePage.HOME -> Home(vm, state)
+                    LivePage.HOME -> Home(vm, state) { gameRoute = "games" }
                     LivePage.SEARCH -> Search(vm, state)
                     LivePage.CHAT -> Chat(vm, state)
                     LivePage.SETTINGS -> Settings(vm, state, theme, setTheme)
@@ -139,8 +153,8 @@ import kotlinx.coroutines.launch
         TextButton(onClick = vm::signOut, enabled = !busy) { Text("Çıkış yap") }
     }
 }
-@Composable private fun Home(vm: LiveViewModel, state: LiveState) {
-    Scaffold(topBar = { Bar("Sohbetler", actions = { IconButton(onClick = { vm.go(LivePage.SETTINGS) }) { Icon(Icons.Outlined.Settings, "Ayarlar") } }) },
+@Composable private fun Home(vm: LiveViewModel, state: LiveState, games: () -> Unit) {
+    Scaffold(topBar = { Bar("Sohbetler", actions = { RightMenu({ vm.go(LivePage.SETTINGS) }, games) }) },
         floatingActionButton = { ExtendedFloatingActionButton(onClick = { vm.go(LivePage.SEARCH) }, text = { Text("Yeni sohbet") }, icon = { Icon(Icons.Outlined.Edit, null) }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             Text("Merhaba, ${state.me?.name.orEmpty()}", Modifier.padding(20.dp))
@@ -151,7 +165,7 @@ import kotlinx.coroutines.launch
             }
             else LazyColumn(contentPadding = PaddingValues(bottom = 96.dp)) {
                 items(state.chats, key = { it.id }) { chat ->
-                    ListItem(headlineContent = { Text("@${chat.handle}") }, supportingContent = { Text("Özel sohbet") }, leadingContent = { Icon(Icons.Outlined.PersonOutline, null) }, modifier = Modifier.clickable(enabled = !state.busy) { vm.open(chat.peer) })
+                    ListItem(headlineContent = { Text("@${chat.handle}") }, supportingContent = { Text("Özel sohbet") }, leadingContent = { Icon(Icons.Outlined.PersonOutline, null) }, modifier = Modifier.animateItem().clickable(enabled = !state.busy) { vm.open(chat.peer) })
                 }
                 item { if (state.moreChats) TextButton(onClick = vm::olderChats, enabled = !state.busy) { Text("Önceki sohbetleri yükle") } }
             }
@@ -175,24 +189,26 @@ import kotlinx.coroutines.launch
     var showSafety by remember(state.chatId, state.safety) { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<String?>(null) }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-    LaunchedEffect(state.messages.lastOrNull()?.id) { if (state.messages.isNotEmpty()) listState.scrollToItem(state.messages.size) }
+    val bottom = rememberSmoothMessageScroll(listState, state.messages.lastOrNull()?.id, state.messages.size + 1, state.messages.lastOrNull()?.mine == true)
+    val scrollScope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().imePadding()) {
         Bar(state.peer?.name ?: "Sohbet", { vm.go(LivePage.HOME) }, actions = { IconButton(onClick = { showSafety = true }) { Icon(Icons.Outlined.VerifiedUser, "Güvenlik numarası") } })
         TextButton(onClick = { showSafety = true }, modifier = Modifier.fillMaxWidth()) { Text(if (state.verified) "Kimlik doğrulandı · Güvenlik numarası" else "Mesajlaşmak için güvenlik numarasını doğrula") }
         LazyColumn(state = listState, modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { if (state.more) TextButton(onClick = vm::older, enabled = !state.busy) { Text("Önceki mesajları yükle") } }
             items(state.messages, key = { it.id }) { message ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = if (message.mine) Arrangement.End else Arrangement.Start) {
+                Row(Modifier.fillMaxWidth().animateItem(), horizontalArrangement = if (message.mine) Arrangement.End else Arrangement.Start) {
                     Surface(color = if (message.mine) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                        shape = MaterialTheme.shapes.large, modifier = Modifier.widthIn(max = 300.dp).clickable(enabled = message.deletable && !state.busy) { deleting = message.id }) {
+                        shape = if(message.mine) RoundedCornerShape(20.dp,20.dp,4.dp,20.dp) else RoundedCornerShape(20.dp,20.dp,20.dp,4.dp), modifier = Modifier.widthIn(max = 300.dp).clickable(enabled = message.deletable && !state.busy) { deleting = message.id }) {
                         Column(Modifier.padding(14.dp)) { Text(message.text); Text("${message.time} ${message.status}", style = MaterialTheme.typography.labelSmall, modifier = Modifier.align(Alignment.End).padding(top = 6.dp)) }
                     }
                 }
             }
         }
         if (state.pending > 0) TextButton(onClick = vm::retryOutbox, enabled = !state.busy) { Text("Bekleyenleri yeniden gönder") }
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(draft, { draft = it.take(2000) }, placeholder = { Text("Mesaj yaz…") }, maxLines = 5, modifier = Modifier.weight(1f))
+        if(!bottom) TextButton(onClick = { scrollScope.launch { listState.animateScrollToItem(state.messages.size) } }, modifier = Modifier.align(Alignment.End)) { Text("Son mesaja git ↓") }
+        Row(Modifier.fillMaxWidth().animateContentSize().padding(12.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(draft, { draft = it.take(2000) }, placeholder = { Text("Mesaj yaz…") }, maxLines = 5, shape = RoundedCornerShape(24.dp), modifier = Modifier.weight(1f))
             FilledIconButton(onClick = { vm.send(draft) { draft = "" } }, enabled = state.verified && !state.busy && draft.isNotBlank()) { Icon(Icons.AutoMirrored.Filled.Send, "Gönder") }
         }
     }

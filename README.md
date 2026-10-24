@@ -1,6 +1,6 @@
 # SadieText — Android özel mesajlaşma
 
-**0.2.3-preview.** Firebase Authentication ve Cloud Firestore ile gerçek bire bir mesajlaşma.
+**0.3.0-preview.** Firebase Authentication ve Cloud Firestore ile gerçek bire bir mesajlaşma.
 
 [![Android preview APK](https://github.com/nightmare608/SadieText/actions/workflows/android.yml/badge.svg)](https://github.com/nightmare608/SadieText/actions/workflows/android.yml)
 
@@ -56,6 +56,21 @@ Dosyayı ekledikten sonra **APK'yi yeniden derlemek gerekir**.
 
 İsteğe bağlı Google/OAuth girişi bu sürümde eklenmedi. Gmail adresiyle
 **e-posta ve şifre kullanarak kayıt/giriş** çalışır.
+
+## Telefon Şirketim ve daha akıcı sohbet
+
+Sağ üst menüde **Oyunlar → Telefon Şirketim**: şirket kur, parça/işlemci seçerek
+telefon tasarla, üret, fiyatlandır ve haftalık satış, yorum, beğenilme, stok, iade ve
+kâr-zararı yönet. Ar-Ge, fabrika, kalite kontrol, reklam ve kredi sistemi içerir.
+Çevrimdışı oyun, mevcut SadieText hesabına ayrı atomik otomatik kayıt kullanır.
+İşlemci isimleri gerçek ailelerden alınır; fiyatlar ve puanlar oyun kurgusudur.
+Tam özellikler, muhasebe ve sınırlar: [Telefon Şirketim](docs/PHONE_COMPANY.md).
+[0.3.0 test raporu](docs/PHONE_COMPANY_TESTS.md).
+
+![Telefon Şirketim — tasarım](docs/screenshots/phone-designer.png)
+
+Sohbetlerde animasyonlu mesaj yerleşimi, okuma konumunu koruyan yumuşak kaydırma,
+son mesaja dönme ve daha yumuşak yazma alanı eklendi.
 
 ## Özellikler
 

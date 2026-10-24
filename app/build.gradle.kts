@@ -18,8 +18,8 @@ android {
         applicationId = if (offlinePreview) "tr.sakin.chat.offline" else "tr.sakin.chat"
         minSdk = 26
         targetSdk = 35
-        versionName = if (offlinePreview) "0.2.3-offline-preview" else "0.2.3-preview"
-        versionCode = 5
+        versionName = if (offlinePreview) "0.3.0-offline-preview" else "0.3.0-preview"
+        versionCode = 6
         buildConfigField("boolean", "HAS_FIREBASE", firebaseConfigured.toString())
         buildConfigField("boolean", "OFFLINE_PREVIEW", offlinePreview.toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
